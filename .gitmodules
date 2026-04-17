@@ -1,0 +1,9 @@
+[submodule "repos/hypura"]
+	path = repos/hypura
+	url = https://github.com/zapabob/hypura.git
+[submodule "repos/Turboquant-CUDA"]
+	path = repos/Turboquant-CUDA
+	url = https://github.com/zapabob/Turboquant-CUDA.git
+[submodule "repos/llama.cpp"]
+	path = repos/llama.cpp
+	url = https://github.com/zapabob/llama.cpp.git

@@ -1,0 +1,38 @@
+stack_name = "triality-platform"
+schema_version = 1
+preferred_os = "Windows 11"
+preferred_gpu = "RTX 3060"
+runtime_contract = "gguf-embedded"
+metadata_namespace = "hypura.turboquant"
+
+[repos.hypura]
+role = "operations-runtime"
+path = "repos/hypura"
+remote = "https://github.com/zapabob/hypura.git"
+
+[repos.turboquant_cuda]
+role = "research-exporter"
+path = "repos/Turboquant-CUDA"
+remote = "https://github.com/zapabob/Turboquant-CUDA.git"
+
+[repos.llama_cpp]
+role = "inference-core"
+path = "repos/llama.cpp"
+remote = "https://github.com/zapabob/llama.cpp.git"
+
+[contract]
+allowed_modes = ["paper-faithful", "triality-so8-pareto"]
+required_keys = [
+  "hypura.turboquant.schema_version",
+  "hypura.turboquant.enabled",
+  "hypura.turboquant.mode",
+  "hypura.turboquant.rotation_policy",
+  "hypura.turboquant.rotation_seed",
+  "hypura.turboquant.triality_view",
+  "hypura.turboquant.triality_mix",
+  "hypura.turboquant.paper_fidelity",
+  "hypura.turboquant.k_bits",
+  "hypura.turboquant.v_bits",
+  "hypura.turboquant.payload_format",
+  "hypura.turboquant.payload_bytes",
+]

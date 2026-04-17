@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://triality-platform.local/schemas/turboquant-gguf.schema.json",
+  "title": "Triality GGUF Metadata Contract",
+  "type": "object",
+  "required": [
+    "hypura.turboquant.schema_version",
+    "hypura.turboquant.enabled",
+    "hypura.turboquant.mode",
+    "hypura.turboquant.rotation_policy",
+    "hypura.turboquant.rotation_seed",
+    "hypura.turboquant.triality_view",
+    "hypura.turboquant.triality_mix",
+    "hypura.turboquant.paper_fidelity",
+    "hypura.turboquant.k_bits",
+    "hypura.turboquant.v_bits",
+    "hypura.turboquant.payload_format",
+    "hypura.turboquant.payload_bytes"
+  ],
+  "properties": {
+    "hypura.turboquant.schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "hypura.turboquant.enabled": {
+      "type": "boolean"
+    },
+    "hypura.turboquant.mode": {
+      "type": "string",
+      "enum": ["paper-faithful", "triality-so8-pareto"]
+    },
+    "hypura.turboquant.rotation_policy": {
+      "type": "string"
+    },
+    "hypura.turboquant.rotation_seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "hypura.turboquant.triality_view": {
+      "type": "string"
+    },
+    "hypura.turboquant.triality_mix": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "hypura.turboquant.paper_fidelity": {
+      "type": "boolean"
+    },
+    "hypura.turboquant.k_bits": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "hypura.turboquant.v_bits": {
+      "type": "number",
+      "minimum": 0.0
+    },
+    "hypura.turboquant.payload_format": {
+      "type": "string"
+    },
+    "hypura.turboquant.payload_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "hypura.turboquant.payload_json": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

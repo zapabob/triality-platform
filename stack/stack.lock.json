@@ -1,0 +1,26 @@
+{
+  "stack_version": "0.1.0-dev",
+  "generated_at": "2026-04-17",
+  "preferred_validation": {
+    "os": "Windows 11",
+    "gpu": "RTX 3060",
+    "contract": "gguf-embedded"
+  },
+  "repos": {
+    "hypura": {
+      "remote": "https://github.com/zapabob/hypura.git",
+      "branch": "codex/triality-platform-sync",
+      "commit": "df30ff93eafaa5a96d0475314420f260669af944"
+    },
+    "Turboquant-CUDA": {
+      "remote": "https://github.com/zapabob/Turboquant-CUDA.git",
+      "branch": "codex/triality-platform-sync",
+      "commit": "7601de3ac945f5456533dbe161123ab7f43b5f88"
+    },
+    "llama.cpp": {
+      "remote": "https://github.com/zapabob/llama.cpp.git",
+      "branch": "codex/triality-platform-sync",
+      "commit": "618d4d465b9889ac1f3fc5c26d1a2fd001596584"
+    }
+  }
+}
