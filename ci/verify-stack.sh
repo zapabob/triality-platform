@@ -69,8 +69,8 @@ pareto_fixture="$fixture_root/$pareto_mode/triality-fixture.gguf"
 echo "[triality] inspecting paper-faithful fixture"
 "$hypura_bin" inspect "$paper_fixture"
 
-echo "[triality] serve dry-run against $pareto_mode fixture"
-"$hypura_bin" serve "$pareto_fixture" --dry-run --port 18080
+echo "[triality] serve dry-run against paper-faithful fixture"
+"$hypura_bin" serve "$paper_fixture" --dry-run --port 18080
 
 echo "[triality] benchmark dry-run against paper-faithful fixture"
 "$hypura_bin" bench "$paper_fixture" --dry-run --context 512 --max-tokens 16

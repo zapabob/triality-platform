@@ -24,6 +24,17 @@ function Invoke-TurboquantUvPython {
   }
 }
 
+function Assert-LastExitCode {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Context
+  )
+
+  if ($LASTEXITCODE -ne 0) {
+    throw "$Context failed with exit code $LASTEXITCODE"
+  }
+}
+
 Write-Host "[triality] verifying submodule status"
 git -C $repoRoot submodule status --recursive
 
@@ -41,9 +52,7 @@ Write-Host "[triality] bootstrapping Turboquant-CUDA uv environment (CPU fast ve
 & powershell -ExecutionPolicy Bypass -File (Join-Path $turboquantRoot "scripts\bootstrap_uv.ps1") `
   -TorchExtra cpu `
   -SkipHfQwen
-if ($LASTEXITCODE -ne 0) {
-  throw "Turboquant-CUDA uv bootstrap failed with exit code $LASTEXITCODE"
-}
+Assert-LastExitCode "Turboquant-CUDA uv bootstrap"
 
 Write-Host "[triality] exporting fixtures"
 Invoke-TurboquantUvPython @(
@@ -84,11 +93,14 @@ $paretoFixture = Join-Path $fixtureRoot "$paretoMode\triality-fixture.gguf"
 
 Write-Host "[triality] inspecting paper-faithful fixture"
 & $hypuraBin inspect $paperFixture
+Assert-LastExitCode "hypura inspect"
 
-Write-Host "[triality] serve dry-run against $paretoMode fixture"
-& $hypuraBin serve $paretoFixture --dry-run --port 18080
+Write-Host "[triality] serve dry-run against paper-faithful fixture"
+& $hypuraBin serve $paperFixture --dry-run --port 18080
+Assert-LastExitCode "hypura serve --dry-run"
 
 Write-Host "[triality] benchmark dry-run against paper-faithful fixture"
 & $hypuraBin bench $paperFixture --dry-run --context 512 --max-tokens 16
+Assert-LastExitCode "hypura bench --dry-run"
 
 Write-Host "[triality] stack verification complete"
