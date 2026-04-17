@@ -1,5 +1,39 @@
 # Triality Platform
 
+## TL;DR
+
+Triality Platform is a batteries-included stack for building, packaging,
+running, and serving sidecar-free Triality/TurboQuant GGUF models.
+
+If you care about fast local inference, research-to-runtime reproducibility,
+and an actually usable path from quantization experiments to production-ready
+serving, this repo gives you all three in one place.
+
+## Why This Stack Is Worth Starring
+
+- `Turboquant-CUDA` for CUDA-native Triality/TurboQuant research, exporter
+  tooling, and reproducible fixture generation
+- `llama.cpp` for embedded-GGUF runtime interpretation, lightweight
+  deployment, and broad hardware reach
+- `Hypura` in Rust for inspectable serving, orchestration, scheduling, and
+  operational control on top of `llama.cpp`
+- `GGUF` as the production contract, so models run from embedded metadata and
+  payload instead of fragile sidecar dependencies
+- `uv` + PyTorch `cu128` + Windows CUDA verification scripts for a modern,
+  reproducible local ML/dev workflow
+
+## What This Unlocks
+
+- Train and evaluate new Triality/TurboQuant variants in CUDA-first research
+  code, then export them into a deployment-ready GGUF contract
+- Run the same embedded contract in `llama.cpp` and `Hypura` without switching
+  model formats or rebuilding a separate runtime bridge
+- Validate short-generation CUDA smoke on a practical local machine class,
+  including Windows 11 + RTX 3060, instead of treating deployment as an
+  afterthought
+- Ship a stack where quantization research, runtime compatibility, inspection,
+  and release evidence are versioned together
+
 Triality Platform is the umbrella repository for the integrated `Hypura`,
 `Turboquant-CUDA`, and `llama.cpp` stack.
 
