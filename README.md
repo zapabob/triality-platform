@@ -58,6 +58,21 @@ Current validated stack pins:
 - `docs/`: architecture and release documentation
 - `ci/`: stack-level verification entrypoints
 
+## Architecture
+
+The same GGUF-embedded contract is the handoff point between CUDA-side
+research, lightweight inference, and Rust-side operations.
+
+```mermaid
+flowchart LR
+    A["Turboquant-CUDA<br/>research, profiling, fixture export"] --> B["GGUF embedded contract<br/>hypura.turboquant.* metadata<br/>+ auxiliary payload tensors"]
+    B --> C["llama.cpp<br/>embedded metadata loader<br/>KV/runtime wiring"]
+    B --> D["Hypura<br/>inspect, serve, bench<br/>Rust callback runtime"]
+    C --> E["CUDA verify<br/>llama-completion short smoke"]
+    D --> E
+    E --> F["Release evidence<br/>stack.lock.json + artifacts/cuda-smoke"]
+```
+
 ## Verification
 
 Use the stack-level verification scripts from this repository root.
@@ -89,6 +104,22 @@ offload (`-ngl 1`) to prove embedded runtime wiring without requiring full
 model offload. On the current upstream pin, the non-chat `llama-completion`
 front-end is used for the release smoke because it gives a stable short-run
 CUDA exit path while `llama-cli` remains chat-first.
+
+## CUDA Snapshot
+
+Latest full Windows CUDA evidence:
+`artifacts/cuda-smoke/20260417-011313`
+
+This is a release-smoke snapshot, not a leaderboard benchmark. The goal is to
+prove that the embedded GGUF contract survives the full stack on a practical
+local machine class, including Windows 11 + RTX 3060.
+
+| Check | Evidence | Snapshot |
+| --- | --- | --- |
+| `llama-completion` runtime | `TurboQuant enabled via gguf` | embedded mode `triality-so8-pareto`, seed `70367`, minimal offload `-ngl 1`, `1/33` layers on GPU |
+| `llama-completion` throughput | `common_perf_print` | prompt eval `8.25 tok/s`, generation `3.76 tok/s` on `RTX 3060 12 GB` |
+| `Hypura inspect` | `Source: gguf-embedded` | public mode `triality-so8-pareto`, runtime mode `research-kv-split`, rotation `triality_vector`, payload `format=none bytes=0` |
+| `Hypura run` | `TurboQuant blocking session complete` | `33/33` layers offloaded to GPU, generated `4` tokens, same GGUF contract and metadata source |
 
 ## Contract
 
