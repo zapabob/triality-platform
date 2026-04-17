@@ -21,7 +21,7 @@ path = "repos/llama.cpp"
 remote = "https://github.com/zapabob/llama.cpp.git"
 
 [contract]
-allowed_modes = ["paper-faithful", "triality-so8-pareto"]
+allowed_modes = ["paper-faithful", "triality-proxy-so8-pareto", "triality-so8-pareto"]
 required_keys = [
   "hypura.turboquant.schema_version",
   "hypura.turboquant.enabled",

@@ -45,9 +45,9 @@ This repository is the source of truth for:
 
 Current validated stack pins:
 
-- `repos/hypura`: `codex/triality-platform-sync@df30ff9`
-- `repos/Turboquant-CUDA`: `codex/triality-platform-sync@7601de3`
-- `repos/llama.cpp`: `codex/triality-platform-sync@618d4d4`
+- `repos/hypura`: `main@9fceb2d`
+- `repos/Turboquant-CUDA`: `main@9c0df98`
+- `repos/llama.cpp`: `master@0357e9b`
 
 ## Layout
 
@@ -114,11 +114,15 @@ This is a release-smoke snapshot, not a leaderboard benchmark. The goal is to
 prove that the embedded GGUF contract survives the full stack on a practical
 local machine class, including Windows 11 + RTX 3060.
 
+Current upstream normalizes the pareto public mode to
+`triality-proxy-so8-pareto` while retaining `triality-so8-pareto` as a legacy
+alias for older artifacts and logs.
+
 | Check | Evidence | Snapshot |
 | --- | --- | --- |
-| `llama-completion` runtime | `TurboQuant enabled via gguf` | embedded mode `triality-so8-pareto`, seed `70367`, minimal offload `-ngl 1`, `1/33` layers on GPU |
+| `llama-completion` runtime | `TurboQuant enabled via gguf` | embedded mode `triality-proxy-so8-pareto` (legacy alias `triality-so8-pareto`), seed `70367`, minimal offload `-ngl 1`, `1/33` layers on GPU |
 | `llama-completion` throughput | `common_perf_print` | prompt eval `8.25 tok/s`, generation `3.76 tok/s` on `RTX 3060 12 GB` |
-| `Hypura inspect` | `Source: gguf-embedded` | public mode `triality-so8-pareto`, runtime mode `research-kv-split`, rotation `triality_vector`, payload `format=none bytes=0` |
+| `Hypura inspect` | `Source: gguf-embedded` | public mode `triality-proxy-so8-pareto` (legacy alias `triality-so8-pareto`), runtime mode `research-kv-split`, rotation `triality_vector`, payload `format=none bytes=0` |
 | `Hypura run` | `TurboQuant blocking session complete` | `33/33` layers offloaded to GPU, generated `4` tokens, same GGUF contract and metadata source |
 
 ## Contract

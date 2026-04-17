@@ -27,7 +27,7 @@
     },
     "hypura.turboquant.mode": {
       "type": "string",
-      "enum": ["paper-faithful", "triality-so8-pareto"]
+      "enum": ["paper-faithful", "triality-proxy-so8-pareto", "triality-so8-pareto"]
     },
     "hypura.turboquant.rotation_policy": {
       "type": "string"

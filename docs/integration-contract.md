@@ -22,7 +22,8 @@ All public GGUF keys remain under `hypura.turboquant.*`.
 ## Allowed Modes
 
 - `paper-faithful`
-- `triality-so8-pareto`
+- `triality-proxy-so8-pareto`
+- `triality-so8-pareto` as a legacy alias retained for backward compatibility
 
 ## Payload Policy
 

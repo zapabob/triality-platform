@@ -5,6 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture_root="${TMPDIR:-/tmp}/triality-platform-fixtures"
 lock_path="$repo_root/stack/stack.lock.json"
 turboquant_root="$repo_root/repos/Turboquant-CUDA"
+pareto_mode="triality-proxy-so8-pareto"
 
 uv_run_python() {
   (
@@ -48,13 +49,13 @@ uv_run_python scripts/export_triality_fixture.py \
   --mode paper-faithful
 uv_run_python scripts/export_triality_fixture.py \
   --output-dir "$fixture_root" \
-  --mode triality-so8-pareto
+  --mode "$pareto_mode"
 
 echo "[triality] validating exported manifests"
 uv_run_python scripts/verify_triality_export.py \
   --manifest "$fixture_root/paper-faithful/triality-fixture-manifest.json"
 uv_run_python scripts/verify_triality_export.py \
-  --manifest "$fixture_root/triality-so8-pareto/triality-fixture-manifest.json"
+  --manifest "$fixture_root/$pareto_mode/triality-fixture-manifest.json"
 
 echo "[triality] building hypura against external llama.cpp (CPU-only smoke)"
 export HYPURA_LLAMA_CPP_PATH="$repo_root/repos/llama.cpp"
@@ -63,12 +64,12 @@ cargo build --manifest-path "$repo_root/repos/hypura/Cargo.toml" --bin hypura
 
 hypura_bin="$repo_root/repos/hypura/target/debug/hypura"
 paper_fixture="$fixture_root/paper-faithful/triality-fixture.gguf"
-pareto_fixture="$fixture_root/triality-so8-pareto/triality-fixture.gguf"
+pareto_fixture="$fixture_root/$pareto_mode/triality-fixture.gguf"
 
 echo "[triality] inspecting paper-faithful fixture"
 "$hypura_bin" inspect "$paper_fixture"
 
-echo "[triality] serve dry-run against triality-so8-pareto fixture"
+echo "[triality] serve dry-run against $pareto_mode fixture"
 "$hypura_bin" serve "$pareto_fixture" --dry-run --port 18080
 
 echo "[triality] benchmark dry-run against paper-faithful fixture"
