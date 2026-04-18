@@ -94,9 +94,14 @@ pwsh -File .\ci\verify-stack-cuda.ps1
 
 The fast verify lane checks pin consistency, fixture export, manifest
 validation, and basic `Hypura` CPU smoke. The CUDA lane uses the Python
-research environment from `repos/Turboquant-CUDA`, then builds `llama.cpp` and
-`Hypura` against CUDA for short runtime smoke on a practical local machine
-class.
+research environment from `repos/Turboquant-CUDA` through `uv` with the
+canonical PyTorch `cu128` lane, then builds `llama.cpp` and `Hypura` against
+CUDA for short runtime smoke on a practical local machine class. The fast
+verify lane also exercises the canonical public mode
+`triality-proxy-so8-pareto` plus its weight-plan summary on both targeted
+model families. For SuperGemma4-E4B, the CUDA lane now verifies a formal paired
+`text GGUF + mmproj GGUF` artifact contract, with Ollama-compatible image
+requests and OpenAI-compatible image+audio requests.
 
 ## CUDA Snapshot
 

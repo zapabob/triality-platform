@@ -42,6 +42,7 @@ All public GGUF keys remain under `hypura.turboquant.*`.
 
 - the Python research environment is sourced from `repos/Turboquant-CUDA`
 - stack-level Python entrypoints should execute through that repo's `uv` project
+- real-model CUDA acceptance is standardized on that `uv` environment's PyTorch `cu128` lane
 - Python tooling may assist export, validation, and CUDA preflight checks
 - the public runtime contract remains GGUF metadata plus embedded payload only
 - stack-level CUDA smoke may use a non-chat `llama.cpp` front-end for stability, but that does not change the public GGUF contract

@@ -174,7 +174,7 @@ if (-not $SkipBaseVerify) {
 }
 
 Invoke-LoggedNative -Name "bootstrapping Turboquant-CUDA uv environment" -LogPath (Join-Path $logDir "bootstrap-uv.log") -Script {
-  powershell -ExecutionPolicy Bypass -File (Join-Path $turboquantRoot "scripts\bootstrap_uv.ps1") -SkipSyncIfCudaReady
+  powershell -ExecutionPolicy Bypass -File (Join-Path $turboquantRoot "scripts\bootstrap_uv.ps1") -TorchExtra cu128 -SkipSyncIfCudaReady
 }
 
 Invoke-LoggedNative -Name "running Turboquant-CUDA env_check" -LogPath (Join-Path $logDir "env-check.log") -Script {
