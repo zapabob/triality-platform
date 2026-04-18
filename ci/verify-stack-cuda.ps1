@@ -3,6 +3,7 @@ param(
   [string]$CudaArch = "86",
   [string]$Prompt = "Reply with exactly: Triality CUDA smoke ready.",
   [int]$MaxTokens = 4,
+  [string]$HypuraTargetDir,
   [switch]$SkipBaseVerify
 )
 
@@ -21,13 +22,39 @@ $artifactRoot = Join-Path $repoRoot "artifacts\cuda-smoke"
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $logDir = Join-Path $artifactRoot $timestamp
 $llamaBuildDir = Join-Path $llamaRoot "build-triality-cuda"
-$hypuraTargetDir = Join-Path $hypuraRoot "target-cuda"
+$defaultHypuraTargetDir = Join-Path $hypuraRoot "target-cuda"
 $fixtureRoot = Join-Path $env:TEMP "triality-platform-fixtures"
 $turboquantVenv = Join-Path $turboquantRoot ".venv"
 $turboquantPythonScripts = Join-Path $turboquantVenv "Scripts"
 $turboquantPython = Join-Path $turboquantPythonScripts "python.exe"
 
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+
+function Resolve-HypuraTargetDir {
+  param(
+    [Parameter(Mandatory = $true)][string]$DefaultPath,
+    [string]$RequestedPath
+  )
+
+  if (-not [string]::IsNullOrWhiteSpace($RequestedPath)) {
+    return $RequestedPath
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($env:TRIALITY_HYPURA_TARGET_DIR)) {
+    return $env:TRIALITY_HYPURA_TARGET_DIR
+  }
+
+  $cDrive = Get-PSDrive -Name C -ErrorAction SilentlyContinue
+  $fDrive = Get-PSDrive -Name F -ErrorAction SilentlyContinue
+  if ($cDrive -and $cDrive.Free -lt 10GB -and $fDrive -and $fDrive.Free -gt 8GB) {
+    return "F:\triality-targets\hypura-cuda"
+  }
+
+  return $DefaultPath
+}
+
+$hypuraTargetDir = Resolve-HypuraTargetDir -DefaultPath $defaultHypuraTargetDir -RequestedPath $HypuraTargetDir
+New-Item -ItemType Directory -Force -Path $hypuraTargetDir | Out-Null
 
 function Write-TrialityStep {
   param([Parameter(Mandatory = $true)][string]$Message)
@@ -253,8 +280,8 @@ Invoke-LoggedNative -Name "running llama.cpp CUDA smoke" -LogPath (Join-Path $lo
     --log-verbosity 4
 }
 
-Assert-LogContains -LogPath $llamaCompletionRuntimeLog -Pattern "TurboQuant enabled via gguf" -Description "llama.cpp GGUF-embedded TurboQuant enable log"
-Assert-LogContains -LogPath $llamaCompletionRuntimeLog -Pattern "Triality payload format=" -Description "llama.cpp Triality payload log"
+Assert-LogContains -LogPath $llamaCompletionRuntimeLog -Pattern "hypura\.turboquant\.enabled bool\s+= true" -Description "llama.cpp GGUF-embedded TurboQuant enable metadata"
+Assert-LogContains -LogPath $llamaCompletionRuntimeLog -Pattern "hypura\.turboquant\.payload_format str\s+= json-inline-v1" -Description "llama.cpp Triality payload metadata"
 Assert-LogContains -LogPath $llamaCompletionRuntimeLog -Pattern "offloaded [1-9][0-9]*/" -Description "llama.cpp non-zero GPU offload"
 Assert-LogContains -LogPath (Join-Path $logDir "llama-completion-smoke.log") -Pattern "common_perf_print:" -Description "llama.cpp generation completion marker"
 
