@@ -10,7 +10,7 @@
     "hypura": {
       "remote": "https://github.com/zapabob/hypura.git",
       "branch": "main",
-      "commit": "8e346b5640d3e0231b39377b2983a7272cd794c6"
+      "commit": "71ecaebf656020866f77356097d08aeef2734d15"
     },
     "Turboquant-CUDA": {
       "remote": "https://github.com/zapabob/Turboquant-CUDA.git",
