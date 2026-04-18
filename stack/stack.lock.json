@@ -10,17 +10,17 @@
     "hypura": {
       "remote": "https://github.com/zapabob/hypura.git",
       "branch": "main",
-      "commit": "95bc0010c0e51a426c8aaae2ab77c4db1a94fbe6"
+      "commit": "651e4af10613cc3917a083b91d642ec5c7ea1281"
     },
     "Turboquant-CUDA": {
       "remote": "https://github.com/zapabob/Turboquant-CUDA.git",
       "branch": "main",
-      "commit": "8b8465bd6c358fca79e61eb5aa73540021d2fcfc"
+      "commit": "5980f4b2087cb8598230daf9fdb612fb53945c53"
     },
     "llama.cpp": {
       "remote": "https://github.com/zapabob/llama.cpp.git",
       "branch": "master",
-      "commit": "0357e9be3066c6b27dcc82e6404d7fd4a190d924"
+      "commit": "fe66971d2097c993f5535f15cc23c051cea3f595"
     }
   }
 }
