@@ -3,9 +3,13 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture_root="${TMPDIR:-/tmp}/triality-platform-fixtures"
+qwen_fixture_root="$fixture_root/qwen35"
+gemma_fixture_root="$fixture_root/gemma4-e4b"
 lock_path="$repo_root/stack/stack.lock.json"
 turboquant_root="$repo_root/repos/Turboquant-CUDA"
 pareto_mode="triality-proxy-so8-pareto"
+qwen_model_family="huihui-ai/Huihui-Qwen3.5-9B-Claude-4.6-Opus-abliterated"
+gemma_model_family="Jiunsong/supergemma4-e4b-abliterated"
 
 uv_run_python() {
   (
@@ -45,17 +49,33 @@ bash "$turboquant_root/scripts/bootstrap_uv.sh" --torch-extra cpu --skip-hf-qwen
 
 echo "[triality] exporting fixtures"
 uv_run_python scripts/export_triality_fixture.py \
-  --output-dir "$fixture_root" \
-  --mode paper-faithful
+  --output-dir "$qwen_fixture_root" \
+  --mode paper-faithful \
+  --model-family "$qwen_model_family"
 uv_run_python scripts/export_triality_fixture.py \
-  --output-dir "$fixture_root" \
-  --mode "$pareto_mode"
+  --output-dir "$qwen_fixture_root" \
+  --mode "$pareto_mode" \
+  --model-family "$qwen_model_family"
+uv_run_python scripts/export_triality_fixture.py \
+  --output-dir "$gemma_fixture_root" \
+  --mode paper-faithful \
+  --model-family "$gemma_model_family" \
+  --modality-scope full-multimodal
+uv_run_python scripts/export_triality_fixture.py \
+  --output-dir "$gemma_fixture_root" \
+  --mode "$pareto_mode" \
+  --model-family "$gemma_model_family" \
+  --modality-scope full-multimodal
 
 echo "[triality] validating exported manifests"
 uv_run_python scripts/verify_triality_export.py \
-  --manifest "$fixture_root/paper-faithful/triality-fixture-manifest.json"
+  --manifest "$qwen_fixture_root/paper-faithful/triality-fixture-manifest.json"
 uv_run_python scripts/verify_triality_export.py \
-  --manifest "$fixture_root/$pareto_mode/triality-fixture-manifest.json"
+  --manifest "$qwen_fixture_root/$pareto_mode/triality-fixture-manifest.json"
+uv_run_python scripts/verify_triality_export.py \
+  --manifest "$gemma_fixture_root/paper-faithful/triality-fixture-manifest.json"
+uv_run_python scripts/verify_triality_export.py \
+  --manifest "$gemma_fixture_root/$pareto_mode/triality-fixture-manifest.json"
 
 echo "[triality] building hypura against external llama.cpp (CPU-only smoke)"
 export HYPURA_LLAMA_CPP_PATH="$repo_root/repos/llama.cpp"
@@ -63,16 +83,38 @@ export HYPURA_NO_CUDA=1
 cargo build --manifest-path "$repo_root/repos/hypura/Cargo.toml" --bin hypura
 
 hypura_bin="$repo_root/repos/hypura/target/debug/hypura"
-paper_fixture="$fixture_root/paper-faithful/triality-fixture.gguf"
-pareto_fixture="$fixture_root/$pareto_mode/triality-fixture.gguf"
+qwen_paper_fixture="$qwen_fixture_root/paper-faithful/triality-fixture.gguf"
+qwen_pareto_fixture="$qwen_fixture_root/$pareto_mode/triality-fixture.gguf"
+gemma_paper_fixture="$gemma_fixture_root/paper-faithful/triality-fixture.gguf"
+gemma_pareto_fixture="$gemma_fixture_root/$pareto_mode/triality-fixture.gguf"
+gemma_paper_mmproj="$gemma_fixture_root/paper-faithful/mmproj-triality-fixture.gguf"
+gemma_pareto_mmproj="$gemma_fixture_root/$pareto_mode/mmproj-triality-fixture.gguf"
 
-echo "[triality] inspecting paper-faithful fixture"
-"$hypura_bin" inspect "$paper_fixture"
+echo "[triality] inspecting qwen paper-faithful fixture"
+"$hypura_bin" inspect "$qwen_paper_fixture"
 
-echo "[triality] serve dry-run against paper-faithful fixture"
-"$hypura_bin" serve "$paper_fixture" --dry-run --port 18080
+echo "[triality] inspecting gemma paper-faithful fixture"
+"$hypura_bin" inspect "$gemma_paper_fixture" --mmproj "$gemma_paper_mmproj"
 
-echo "[triality] benchmark dry-run against paper-faithful fixture"
-"$hypura_bin" bench "$paper_fixture" --dry-run --context 512 --max-tokens 16
+echo "[triality] inspecting qwen $pareto_mode fixture"
+"$hypura_bin" inspect "$qwen_pareto_fixture"
+
+echo "[triality] inspecting gemma $pareto_mode fixture"
+"$hypura_bin" inspect "$gemma_pareto_fixture" --mmproj "$gemma_pareto_mmproj"
+
+echo "[triality] serve dry-run against qwen paper-faithful fixture"
+"$hypura_bin" serve "$qwen_paper_fixture" --dry-run --port 18080
+
+echo "[triality] serve dry-run against gemma paper-faithful fixture"
+"$hypura_bin" serve "$gemma_paper_fixture" --mmproj "$gemma_paper_mmproj" --dry-run --port 18081
+
+echo "[triality] serve dry-run against qwen $pareto_mode fixture"
+"$hypura_bin" serve "$qwen_pareto_fixture" --dry-run --port 18082
+
+echo "[triality] serve dry-run against gemma $pareto_mode fixture"
+"$hypura_bin" serve "$gemma_pareto_fixture" --mmproj "$gemma_pareto_mmproj" --dry-run --port 18083
+
+echo "[triality] benchmark dry-run against qwen paper-faithful fixture"
+"$hypura_bin" bench "$qwen_paper_fixture" --dry-run --context 512 --max-tokens 16
 
 echo "[triality] stack verification complete"

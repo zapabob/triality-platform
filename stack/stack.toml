@@ -35,4 +35,21 @@ required_keys = [
   "hypura.turboquant.v_bits",
   "hypura.turboquant.payload_format",
   "hypura.turboquant.payload_bytes",
+  "hypura.turboquant.weight.enabled",
+  "hypura.turboquant.weight.source_ftype",
+  "hypura.turboquant.weight.policy",
+  "hypura.turboquant.weight.protected_roles",
+  "hypura.turboquant.weight.protected_layers",
+  "hypura.turboquant.weight.modality_scope",
+  "hypura.turboquant.weight.payload_format",
+  "hypura.turboquant.weight.payload_bytes",
+]
+multimodal_pair_artifact = "text-gguf-plus-mmproj"
+manifest_fields = ["text_model_path", "mmproj_model_path", "mmproj_required", "modalities", "sample_env"]
+cuda_acceptance_env = [
+  "TRIALITY_QWEN_SMOKE_MODEL",
+  "TRIALITY_GEMMA_SMOKE_MODEL",
+  "TRIALITY_GEMMA_MMPROJ_MODEL",
+  "TRIALITY_GEMMA_IMAGE_SAMPLE",
+  "TRIALITY_GEMMA_AUDIO_SAMPLE",
 ]

@@ -15,7 +15,15 @@
     "hypura.turboquant.k_bits",
     "hypura.turboquant.v_bits",
     "hypura.turboquant.payload_format",
-    "hypura.turboquant.payload_bytes"
+    "hypura.turboquant.payload_bytes",
+    "hypura.turboquant.weight.enabled",
+    "hypura.turboquant.weight.source_ftype",
+    "hypura.turboquant.weight.policy",
+    "hypura.turboquant.weight.protected_roles",
+    "hypura.turboquant.weight.protected_layers",
+    "hypura.turboquant.weight.modality_scope",
+    "hypura.turboquant.weight.payload_format",
+    "hypura.turboquant.weight.payload_bytes"
   ],
   "properties": {
     "hypura.turboquant.schema_version": {
@@ -63,6 +71,35 @@
       "minimum": 0
     },
     "hypura.turboquant.payload_json": {
+      "type": "string"
+    },
+    "hypura.turboquant.weight.enabled": {
+      "type": "boolean"
+    },
+    "hypura.turboquant.weight.source_ftype": {
+      "type": "string",
+      "enum": ["bf16", "f16", "q8_0"]
+    },
+    "hypura.turboquant.weight.policy": {
+      "type": "string"
+    },
+    "hypura.turboquant.weight.protected_roles": {
+      "type": "string"
+    },
+    "hypura.turboquant.weight.protected_layers": {
+      "type": "string"
+    },
+    "hypura.turboquant.weight.modality_scope": {
+      "type": "string"
+    },
+    "hypura.turboquant.weight.payload_format": {
+      "type": "string"
+    },
+    "hypura.turboquant.weight.payload_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "hypura.turboquant.weight.payload_json": {
       "type": "string"
     }
   },

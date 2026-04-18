@@ -1,7 +1,14 @@
 param(
-  [string]$ModelPath = "C:\Users\downl\Desktop\EasyNovelAssistant\EasyNovelAssistant\KoboldCpp\Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-Q8_0.turboquant.gguf",
+  [string]$ModelPath = "",
+  [string]$QwenModelPath = $env:TRIALITY_QWEN_SMOKE_MODEL,
+  [string]$GemmaModelPath = $env:TRIALITY_GEMMA_SMOKE_MODEL,
+  [string]$GemmaMmprojPath = $env:TRIALITY_GEMMA_MMPROJ_MODEL,
+  [string]$GemmaImageSample = $env:TRIALITY_GEMMA_IMAGE_SAMPLE,
+  [string]$GemmaAudioSample = $env:TRIALITY_GEMMA_AUDIO_SAMPLE,
   [string]$CudaArch = "86",
   [string]$Prompt = "Reply with exactly: Triality CUDA smoke ready.",
+  [string]$QwenPrompt = "Reply with exactly: Triality Qwen CUDA smoke ready.",
+  [string]$GemmaPrompt = "Reply with exactly: Triality Gemma CUDA smoke ready.",
   [int]$MaxTokens = 4,
   [switch]$SkipBaseVerify
 )
@@ -135,18 +142,369 @@ function Assert-LogNotContains {
   }
 }
 
+function Assert-ValidSmokeModel {
+  param(
+    [Parameter(Mandatory = $true)][string]$Label,
+    [Parameter(Mandatory = $true)][string]$Path
+  )
+
+  if (-not (Test-Path $Path)) {
+    throw "$Label smoke model not found: $Path"
+  }
+
+  if (-not $Path.ToLowerInvariant().EndsWith(".gguf")) {
+    throw "$Label smoke model must be a GGUF file: $Path"
+  }
+}
+
+function Assert-ValidExistingFile {
+  param(
+    [Parameter(Mandatory = $true)][string]$Label,
+    [Parameter(Mandatory = $true)][string]$Path
+  )
+
+  if (-not (Test-Path $Path)) {
+    throw "$Label file not found: $Path"
+  }
+}
+
+function Get-MimeType {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path
+  )
+
+  switch ([System.IO.Path]::GetExtension($Path).ToLowerInvariant()) {
+    ".png" { return "image/png" }
+    ".jpg" { return "image/jpeg" }
+    ".jpeg" { return "image/jpeg" }
+    ".webp" { return "image/webp" }
+    ".wav" { return "audio/wav" }
+    ".mp3" { return "audio/mpeg" }
+    ".flac" { return "audio/flac" }
+    default { return "application/octet-stream" }
+  }
+}
+
+function Get-DataUrl {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path
+  )
+
+  $bytes = [System.IO.File]::ReadAllBytes($Path)
+  $base64 = [System.Convert]::ToBase64String($bytes)
+  $mime = Get-MimeType -Path $Path
+  return "data:$mime;base64,$base64"
+}
+
+function Invoke-LlamaCudaSmoke {
+  param(
+    [Parameter(Mandatory = $true)][string]$Label,
+    [Parameter(Mandatory = $true)][string]$ModelPath,
+    [Parameter(Mandatory = $true)][string]$PromptText,
+    [Parameter(Mandatory = $true)][string]$CompletionExe,
+    [Parameter(Mandatory = $true)][string]$LogRoot,
+    [Parameter(Mandatory = $true)][int]$ContextSize,
+    [Parameter(Mandatory = $true)][int]$Tokens,
+    [string]$MmprojPath,
+    [string]$ImageSample,
+    [string]$AudioSample,
+    [string]$MtmdCliExe
+  )
+
+  $runtimeLog = Join-Path $LogRoot "llama-$Label-runtime.log"
+  $smokeLog = Join-Path $LogRoot "llama-$Label-smoke.log"
+  if ([string]::IsNullOrWhiteSpace($MmprojPath)) {
+    Invoke-LoggedNative -Name "running llama.cpp CUDA smoke ($Label)" -LogPath $smokeLog -Script {
+      & $CompletionExe `
+        -m $ModelPath `
+        -p $PromptText `
+        -n $Tokens `
+        -c $ContextSize `
+        -ngl 1 `
+        --simple-io `
+        --no-warmup `
+        --no-conversation `
+        --no-display-prompt `
+        -rea off `
+        --log-file $runtimeLog `
+        --log-verbosity 4
+    }
+  } else {
+    Invoke-LoggedNative -Name "running llama.cpp multimodal CUDA smoke ($Label)" -LogPath $smokeLog -Script {
+      & $MtmdCliExe `
+        -m $ModelPath `
+        --mmproj $MmprojPath `
+        -p $PromptText `
+        -n $Tokens `
+        -c $ContextSize `
+        -ngl 1 `
+        --simple-io `
+        --no-warmup `
+        --no-conversation `
+        --no-display-prompt `
+        --reasoning-format none `
+        --log-file $runtimeLog `
+        --log-verbosity 4 `
+        --image $ImageSample `
+        --audio $AudioSample
+    }
+  }
+
+  Assert-LogContains -LogPath $runtimeLog -Pattern "TurboQuant enabled via gguf" -Description "llama.cpp GGUF-embedded TurboQuant enable log ($Label)"
+  Assert-LogContains -LogPath $runtimeLog -Pattern "Triality payload format=" -Description "llama.cpp Triality payload log ($Label)"
+  Assert-LogContains -LogPath $runtimeLog -Pattern "offloaded [1-9][0-9]*/" -Description "llama.cpp non-zero GPU offload ($Label)"
+  if ([string]::IsNullOrWhiteSpace($MmprojPath)) {
+    Assert-LogContains -LogPath $smokeLog -Pattern "common_perf_print:" -Description "llama.cpp generation completion marker ($Label)"
+  } else {
+    Assert-LogContains -LogPath $smokeLog -Pattern "." -Description "llama.cpp multimodal generation output ($Label)"
+  }
+}
+
+function Invoke-HypuraCudaSmoke {
+  param(
+    [Parameter(Mandatory = $true)][string]$Label,
+    [Parameter(Mandatory = $true)][string]$ModelPath,
+    [Parameter(Mandatory = $true)][string]$PromptText,
+    [Parameter(Mandatory = $true)][string]$HypuraExe,
+    [Parameter(Mandatory = $true)][string]$LogRoot,
+    [Parameter(Mandatory = $true)][int]$ContextSize,
+    [Parameter(Mandatory = $true)][int]$Tokens,
+    [Parameter(Mandatory = $true)][string]$ExpectedWeightPolicy,
+    [Parameter(Mandatory = $true)][string]$ExpectedModalityScope,
+    [string]$MmprojPath,
+    [string]$ImageSample,
+    [string]$AudioSample
+  )
+
+  $inspectLog = Join-Path $LogRoot "hypura-$Label-inspect.log"
+  $runLog = Join-Path $LogRoot "hypura-$Label-run.log"
+
+  Invoke-LoggedNative -Name "running Hypura inspect ($Label)" -LogPath $inspectLog -Script {
+    $args = @("inspect", $ModelPath)
+    if (-not [string]::IsNullOrWhiteSpace($MmprojPath)) {
+      $args += @("--mmproj", $MmprojPath)
+    }
+    & $HypuraExe @args
+  }
+  Assert-LogContains -LogPath $inspectLog -Pattern "Source: gguf-embedded" -Description "Hypura embedded GGUF source ($Label)"
+  Assert-LogContains -LogPath $inspectLog -Pattern "Public mode:" -Description "Hypura Triality public mode ($Label)"
+  Assert-LogContains -LogPath $inspectLog -Pattern [regex]::Escape($ExpectedWeightPolicy) -Description "Hypura weight policy summary ($Label)"
+  Assert-LogContains -LogPath $inspectLog -Pattern [regex]::Escape("modality_scope=$ExpectedModalityScope") -Description "Hypura modality scope summary ($Label)"
+  if (-not [string]::IsNullOrWhiteSpace($MmprojPath)) {
+    Assert-LogContains -LogPath $inspectLog -Pattern "mmproj required: True|mmproj required: true" -Description "Hypura mmproj requirement summary ($Label)"
+  }
+
+  Invoke-LoggedNative -Name "running Hypura CUDA smoke ($Label)" -LogPath $runLog -Script {
+    $args = @("run", $ModelPath, "--context", $ContextSize, "--prompt", $PromptText, "--max-tokens", $Tokens)
+    if (-not [string]::IsNullOrWhiteSpace($MmprojPath)) {
+      $args += @("--mmproj", $MmprojPath)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ImageSample)) {
+      $args += @("--image", $ImageSample)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($AudioSample)) {
+      $args += @("--audio", $AudioSample)
+    }
+    & $HypuraExe @args
+  }
+  Assert-LogContains -LogPath $runLog -Pattern "TurboQuant:\s+mode=" -Description "Hypura TurboQuant runtime summary ($Label)"
+  Assert-LogContains -LogPath $runLog -Pattern "Generation complete:" -Description "Hypura generation completion marker ($Label)"
+  Assert-LogNotContains -LogPath $runLog -Pattern "TurboQuant runtime callback failed" -Description "Hypura TurboQuant runtime callback failure ($Label)"
+}
+
+function Start-HypuraServer {
+  param(
+    [Parameter(Mandatory = $true)][string]$Label,
+    [Parameter(Mandatory = $true)][string]$HypuraExe,
+    [Parameter(Mandatory = $true)][string]$ModelPath,
+    [Parameter(Mandatory = $true)][int]$Port,
+    [Parameter(Mandatory = $true)][int]$ContextSize,
+    [Parameter(Mandatory = $true)][string]$LogRoot,
+    [string]$MmprojPath
+  )
+
+  $stdoutLog = Join-Path $LogRoot "hypura-$Label-server.stdout.log"
+  $stderrLog = Join-Path $LogRoot "hypura-$Label-server.stderr.log"
+  $args = @("serve", $ModelPath, "--host", "127.0.0.1", "--port", $Port, "--context", $ContextSize)
+  if (-not [string]::IsNullOrWhiteSpace($MmprojPath)) {
+    $args += @("--mmproj", $MmprojPath)
+  }
+
+  Write-TrialityStep "starting Hypura server ($Label) on :$Port"
+  $process = Start-Process -FilePath $HypuraExe -ArgumentList $args -PassThru -NoNewWindow -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog
+
+  for ($attempt = 0; $attempt -lt 60; $attempt++) {
+    if ($process.HasExited) {
+      throw "Hypura server ($Label) exited early with code $($process.ExitCode). See $stdoutLog and $stderrLog"
+    }
+    try {
+      Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$Port/api/tags" -TimeoutSec 2 | Out-Null
+      return [pscustomobject]@{
+        Process = $process
+        StdoutLog = $stdoutLog
+        StderrLog = $stderrLog
+        Port = $Port
+      }
+    } catch {
+      Start-Sleep -Seconds 1
+    }
+  }
+
+  try {
+    Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+  } catch {}
+  throw "Timed out waiting for Hypura server ($Label) on port $Port"
+}
+
+function Stop-HypuraServer {
+  param(
+    [Parameter(Mandatory = $true)]$ServerHandle
+  )
+
+  if ($null -ne $ServerHandle.Process -and -not $ServerHandle.Process.HasExited) {
+    try {
+      Stop-Process -Id $ServerHandle.Process.Id -Force -ErrorAction SilentlyContinue
+      Wait-Process -Id $ServerHandle.Process.Id -Timeout 10 -ErrorAction SilentlyContinue
+    } catch {}
+  }
+}
+
+function Invoke-OllamaChatServerSmoke {
+  param(
+    [Parameter(Mandatory = $true)][int]$Port,
+    [Parameter(Mandatory = $true)][string]$PromptText,
+    [Parameter(Mandatory = $true)][string]$LogPath,
+    [string]$ImageSample
+  )
+
+  $message = @{
+    role = "user"
+    content = $PromptText
+  }
+  if (-not [string]::IsNullOrWhiteSpace($ImageSample)) {
+    $message.images = @([System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes($ImageSample)))
+  }
+
+  $body = @{
+    model = "triality"
+    stream = $false
+    messages = @($message)
+  } | ConvertTo-Json -Depth 8
+
+  $response = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$Port/api/chat" -ContentType "application/json" -Body $body
+  $response | ConvertTo-Json -Depth 10 | Set-Content -Path $LogPath
+  if ([string]::IsNullOrWhiteSpace($response.message.content)) {
+    throw "Ollama-compatible chat smoke returned empty content. See $LogPath"
+  }
+}
+
+function Invoke-OpenAiChatServerSmoke {
+  param(
+    [Parameter(Mandatory = $true)][int]$Port,
+    [Parameter(Mandatory = $true)][string]$PromptText,
+    [Parameter(Mandatory = $true)][string]$LogPath,
+    [string]$ImageSample,
+    [string]$AudioSample
+  )
+
+  if ([string]::IsNullOrWhiteSpace($ImageSample) -and [string]::IsNullOrWhiteSpace($AudioSample)) {
+    $content = $PromptText
+  } else {
+    $content = @(@{
+        type = "text"
+        text = $PromptText
+      })
+    if (-not [string]::IsNullOrWhiteSpace($ImageSample)) {
+      $content += @{
+        type = "image_url"
+        image_url = @{
+          url = Get-DataUrl -Path $ImageSample
+        }
+      }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($AudioSample)) {
+      $content += @{
+        type = "input_audio"
+        input_audio = @{
+          data = [System.Convert]::ToBase64String([System.IO.File]::ReadAllBytes($AudioSample))
+          format = [System.IO.Path]::GetExtension($AudioSample).TrimStart('.').ToLowerInvariant()
+        }
+      }
+    }
+  }
+
+  $body = @{
+    model = "triality"
+    stream = $false
+    messages = @(@{
+        role = "user"
+        content = $content
+      })
+  } | ConvertTo-Json -Depth 12
+
+  $response = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$Port/v1/chat/completions" -ContentType "application/json" -Body $body
+  $response | ConvertTo-Json -Depth 12 | Set-Content -Path $LogPath
+  $text = $response.choices[0].message.content
+  if ([string]::IsNullOrWhiteSpace($text)) {
+    throw "OpenAI-compatible chat smoke returned empty content. See $LogPath"
+  }
+}
+
+if ([string]::IsNullOrWhiteSpace($QwenModelPath)) {
+  $QwenModelPath = $ModelPath
+}
+if ([string]::IsNullOrWhiteSpace($QwenModelPath)) {
+  throw "Qwen model path is required. Set TRIALITY_QWEN_SMOKE_MODEL or pass -QwenModelPath."
+}
+if ($PSBoundParameters.ContainsKey("Prompt")) {
+  $QwenPrompt = $Prompt
+}
+
 Require-Command uv
 Require-Command cargo
 Require-Command cmake
 Require-Command nvidia-smi
 Require-Command nvcc
 
-if (-not (Test-Path $ModelPath)) {
-  throw "Smoke model not found: $ModelPath"
+$modelSpecs = @()
+Assert-ValidSmokeModel -Label "Qwen" -Path $QwenModelPath
+$modelSpecs += [pscustomobject]@{
+  Label = "qwen"
+  ModelPath = $QwenModelPath
+  MmprojPath = $null
+  ImageSample = $null
+  AudioSample = $null
+  PromptText = $QwenPrompt
+  WeightPolicy = "qwen35-full-attention-ffn"
+  ModalityScope = "text-only"
 }
 
-if (-not $ModelPath.ToLowerInvariant().EndsWith(".gguf")) {
-  throw "Smoke model must be a GGUF file: $ModelPath"
+if (-not [string]::IsNullOrWhiteSpace($GemmaModelPath)) {
+  Assert-ValidSmokeModel -Label "Gemma" -Path $GemmaModelPath
+  if ([string]::IsNullOrWhiteSpace($GemmaMmprojPath)) {
+    throw "Gemma mmproj path is required when Gemma smoke is enabled. Set TRIALITY_GEMMA_MMPROJ_MODEL or pass -GemmaMmprojPath."
+  }
+  if ([string]::IsNullOrWhiteSpace($GemmaImageSample)) {
+    throw "Gemma image sample is required when Gemma smoke is enabled. Set TRIALITY_GEMMA_IMAGE_SAMPLE or pass -GemmaImageSample."
+  }
+  if ([string]::IsNullOrWhiteSpace($GemmaAudioSample)) {
+    throw "Gemma audio sample is required when Gemma smoke is enabled. Set TRIALITY_GEMMA_AUDIO_SAMPLE or pass -GemmaAudioSample."
+  }
+  Assert-ValidSmokeModel -Label "Gemma mmproj" -Path $GemmaMmprojPath
+  Assert-ValidExistingFile -Label "Gemma image sample" -Path $GemmaImageSample
+  Assert-ValidExistingFile -Label "Gemma audio sample" -Path $GemmaAudioSample
+  $modelSpecs += [pscustomobject]@{
+    Label = "gemma"
+    ModelPath = $GemmaModelPath
+    MmprojPath = $GemmaMmprojPath
+    ImageSample = $GemmaImageSample
+    AudioSample = $GemmaAudioSample
+    PromptText = $GemmaPrompt
+    WeightPolicy = "gemma4-e4b-shared-decoder-hybrid"
+    ModalityScope = "full-multimodal"
+  }
+} else {
+  Write-TrialityStep "Gemma model path not provided; set TRIALITY_GEMMA_SMOKE_MODEL or pass -GemmaModelPath for full two-model CUDA acceptance."
 }
 
 Write-TrialityStep "verifying submodule status"
@@ -220,14 +578,14 @@ Invoke-LoggedNative -Name "configuring llama.cpp CUDA build" -LogPath (Join-Path
 }
 
 Invoke-LoggedNative -Name "building llama.cpp CUDA targets" -LogPath (Join-Path $logDir "llama-cmake-build.log") -Script {
-  cmake --build $llamaBuildDir --config Release --target llama-cli llama-completion llama-server llama-turboquant --parallel
+  cmake --build $llamaBuildDir --config Release --target llama-cli llama-completion llama-server llama-turboquant llama-mtmd-cli --parallel
 }
 
 $llamaCli = Get-BuiltExecutable -Root $llamaBuildDir -Name "llama-cli.exe"
 $llamaCompletion = Get-BuiltExecutable -Root $llamaBuildDir -Name "llama-completion.exe"
 $llamaServer = Get-BuiltExecutable -Root $llamaBuildDir -Name "llama-server.exe"
 $llamaTurboquant = Get-BuiltExecutable -Root $llamaBuildDir -Name "llama-turboquant.exe"
-$llamaCompletionRuntimeLog = Join-Path $logDir "llama-completion-runtime.log"
+$mtmdCli = Get-BuiltExecutable -Root $llamaBuildDir -Name "llama-mtmd-cli.exe"
 $smokeContext = 512
 
 Set-Content -Path (Join-Path $logDir "llama-binaries.txt") -Value @(
@@ -235,28 +593,23 @@ Set-Content -Path (Join-Path $logDir "llama-binaries.txt") -Value @(
   "llama-completion=$llamaCompletion"
   "llama-server=$llamaServer"
   "llama-turboquant=$llamaTurboquant"
+  "llama-mtmd-cli=$mtmdCli"
 )
 
-Invoke-LoggedNative -Name "running llama.cpp CUDA smoke" -LogPath (Join-Path $logDir "llama-completion-smoke.log") -Script {
-  & $llamaCompletion `
-    -m $ModelPath `
-    -p $Prompt `
-    -n $MaxTokens `
-    -c $smokeContext `
-    -ngl 1 `
-    --simple-io `
-    --no-warmup `
-    --no-conversation `
-    --no-display-prompt `
-    -rea off `
-    --log-file $llamaCompletionRuntimeLog `
-    --log-verbosity 4
+foreach ($spec in $modelSpecs) {
+  Invoke-LlamaCudaSmoke `
+    -Label $spec.Label `
+    -ModelPath $spec.ModelPath `
+    -PromptText $spec.PromptText `
+    -CompletionExe $llamaCompletion `
+    -LogRoot $logDir `
+    -ContextSize $smokeContext `
+    -Tokens $MaxTokens `
+    -MmprojPath $spec.MmprojPath `
+    -ImageSample $spec.ImageSample `
+    -AudioSample $spec.AudioSample `
+    -MtmdCliExe $mtmdCli
 }
-
-Assert-LogContains -LogPath $llamaCompletionRuntimeLog -Pattern "TurboQuant enabled via gguf" -Description "llama.cpp GGUF-embedded TurboQuant enable log"
-Assert-LogContains -LogPath $llamaCompletionRuntimeLog -Pattern "Triality payload format=" -Description "llama.cpp Triality payload log"
-Assert-LogContains -LogPath $llamaCompletionRuntimeLog -Pattern "offloaded [1-9][0-9]*/" -Description "llama.cpp non-zero GPU offload"
-Assert-LogContains -LogPath (Join-Path $logDir "llama-completion-smoke.log") -Pattern "common_perf_print:" -Description "llama.cpp generation completion marker"
 
 Remove-Item Env:HYPURA_NO_CUDA -ErrorAction SilentlyContinue
 $env:HYPURA_LLAMA_CPP_PATH = $llamaRoot
@@ -272,20 +625,75 @@ if (-not (Test-Path $hypuraBin)) {
   throw "Expected Hypura binary not found: $hypuraBin"
 }
 
-Invoke-LoggedNative -Name "running Hypura inspect" -LogPath (Join-Path $logDir "hypura-inspect.log") -Script {
-  & $hypuraBin inspect $ModelPath
+foreach ($spec in $modelSpecs) {
+  Invoke-HypuraCudaSmoke `
+    -Label $spec.Label `
+    -ModelPath $spec.ModelPath `
+    -PromptText $spec.PromptText `
+    -HypuraExe $hypuraBin `
+    -LogRoot $logDir `
+    -ContextSize $smokeContext `
+    -Tokens $MaxTokens `
+    -ExpectedWeightPolicy $spec.WeightPolicy `
+    -ExpectedModalityScope $spec.ModalityScope `
+    -MmprojPath $spec.MmprojPath `
+    -ImageSample $spec.ImageSample `
+    -AudioSample $spec.AudioSample
 }
 
-Assert-LogContains -LogPath (Join-Path $logDir "hypura-inspect.log") -Pattern "Source: gguf-embedded" -Description "Hypura embedded GGUF source"
-Assert-LogContains -LogPath (Join-Path $logDir "hypura-inspect.log") -Pattern "Public mode:" -Description "Hypura Triality public mode"
+$qwenServer = $null
+$gemmaServer = $null
+try {
+  $qwenServer = Start-HypuraServer `
+    -Label "qwen" `
+    -HypuraExe $hypuraBin `
+    -ModelPath $QwenModelPath `
+    -Port 18100 `
+    -ContextSize $smokeContext `
+    -LogRoot $logDir
 
-Invoke-LoggedNative -Name "running Hypura CUDA smoke" -LogPath (Join-Path $logDir "hypura-run.log") -Script {
-  & $hypuraBin run $ModelPath --context $smokeContext --prompt $Prompt --max-tokens $MaxTokens
+  Invoke-OllamaChatServerSmoke `
+    -Port 18100 `
+    -PromptText $QwenPrompt `
+    -LogPath (Join-Path $logDir "hypura-qwen-ollama-chat.json")
+
+  Invoke-OpenAiChatServerSmoke `
+    -Port 18100 `
+    -PromptText $QwenPrompt `
+    -LogPath (Join-Path $logDir "hypura-qwen-openai-chat.json")
+
+  $gemmaSpec = $modelSpecs | Where-Object { $_.Label -eq "gemma" } | Select-Object -First 1
+  if ($null -ne $gemmaSpec) {
+    $gemmaServer = Start-HypuraServer `
+      -Label "gemma" `
+      -HypuraExe $hypuraBin `
+      -ModelPath $gemmaSpec.ModelPath `
+      -MmprojPath $gemmaSpec.MmprojPath `
+      -Port 18101 `
+      -ContextSize $smokeContext `
+      -LogRoot $logDir
+
+    Invoke-OllamaChatServerSmoke `
+      -Port 18101 `
+      -PromptText $gemmaSpec.PromptText `
+      -ImageSample $gemmaSpec.ImageSample `
+      -LogPath (Join-Path $logDir "hypura-gemma-ollama-chat.json")
+
+    Invoke-OpenAiChatServerSmoke `
+      -Port 18101 `
+      -PromptText $gemmaSpec.PromptText `
+      -ImageSample $gemmaSpec.ImageSample `
+      -AudioSample $gemmaSpec.AudioSample `
+      -LogPath (Join-Path $logDir "hypura-gemma-openai-chat.json")
+  }
+} finally {
+  if ($null -ne $qwenServer) {
+    Stop-HypuraServer -ServerHandle $qwenServer
+  }
+  if ($null -ne $gemmaServer) {
+    Stop-HypuraServer -ServerHandle $gemmaServer
+  }
 }
-
-Assert-LogContains -LogPath (Join-Path $logDir "hypura-run.log") -Pattern "TurboQuant:\s+mode=" -Description "Hypura TurboQuant runtime summary"
-Assert-LogContains -LogPath (Join-Path $logDir "hypura-run.log") -Pattern "Generation complete:" -Description "Hypura generation completion marker"
-Assert-LogNotContains -LogPath (Join-Path $logDir "hypura-run.log") -Pattern "TurboQuant runtime callback failed" -Description "Hypura TurboQuant runtime callback failure"
 
 Write-TrialityStep "CUDA stack verification complete"
 Write-TrialityStep "logs: $logDir"

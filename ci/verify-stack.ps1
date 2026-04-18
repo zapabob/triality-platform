@@ -3,9 +3,13 @@ Set-StrictMode -Version Latest
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $fixtureRoot = Join-Path $env:TEMP "triality-platform-fixtures"
+$qwenFixtureRoot = Join-Path $fixtureRoot "qwen35"
+$gemmaFixtureRoot = Join-Path $fixtureRoot "gemma4-e4b"
 $lockPath = Join-Path $repoRoot "stack\stack.lock.json"
 $turboquantRoot = Join-Path $repoRoot "repos\Turboquant-CUDA"
 $paretoMode = "triality-proxy-so8-pareto"
+$qwenModelFamily = "huihui-ai/Huihui-Qwen3.5-9B-Claude-4.6-Opus-abliterated"
+$gemmaModelFamily = "Jiunsong/supergemma4-e4b-abliterated"
 
 function Invoke-TurboquantUvPython {
   param(
@@ -58,28 +62,64 @@ Write-Host "[triality] exporting fixtures"
 Invoke-TurboquantUvPython @(
   "scripts\export_triality_fixture.py",
   "--output-dir",
-  $fixtureRoot,
+  $qwenFixtureRoot,
   "--mode",
-  "paper-faithful"
+  "paper-faithful",
+  "--model-family",
+  $qwenModelFamily
 )
 Invoke-TurboquantUvPython @(
   "scripts\export_triality_fixture.py",
   "--output-dir",
-  $fixtureRoot,
+  $qwenFixtureRoot,
   "--mode",
-  $paretoMode
+  $paretoMode,
+  "--model-family",
+  $qwenModelFamily
+)
+Invoke-TurboquantUvPython @(
+  "scripts\export_triality_fixture.py",
+  "--output-dir",
+  $gemmaFixtureRoot,
+  "--mode",
+  "paper-faithful",
+  "--model-family",
+  $gemmaModelFamily,
+  "--modality-scope",
+  "full-multimodal"
+)
+Invoke-TurboquantUvPython @(
+  "scripts\export_triality_fixture.py",
+  "--output-dir",
+  $gemmaFixtureRoot,
+  "--mode",
+  $paretoMode,
+  "--model-family",
+  $gemmaModelFamily,
+  "--modality-scope",
+  "full-multimodal"
 )
 
 Write-Host "[triality] validating exported manifests"
 Invoke-TurboquantUvPython @(
   "scripts\verify_triality_export.py",
   "--manifest",
-  (Join-Path $fixtureRoot "paper-faithful\triality-fixture-manifest.json")
+  (Join-Path $qwenFixtureRoot "paper-faithful\triality-fixture-manifest.json")
 )
 Invoke-TurboquantUvPython @(
   "scripts\verify_triality_export.py",
   "--manifest",
-  (Join-Path $fixtureRoot "$paretoMode\triality-fixture-manifest.json")
+  (Join-Path $qwenFixtureRoot "$paretoMode\triality-fixture-manifest.json")
+)
+Invoke-TurboquantUvPython @(
+  "scripts\verify_triality_export.py",
+  "--manifest",
+  (Join-Path $gemmaFixtureRoot "paper-faithful\triality-fixture-manifest.json")
+)
+Invoke-TurboquantUvPython @(
+  "scripts\verify_triality_export.py",
+  "--manifest",
+  (Join-Path $gemmaFixtureRoot "$paretoMode\triality-fixture-manifest.json")
 )
 
 Write-Host "[triality] building hypura against external llama.cpp (CPU-only smoke)"
@@ -88,19 +128,47 @@ $env:HYPURA_NO_CUDA = "1"
 cmd /c "cargo build --manifest-path ""$(Join-Path $repoRoot "repos\hypura\Cargo.toml")"" --bin hypura"
 
 $hypuraBin = Join-Path $repoRoot "repos\hypura\target\debug\hypura.exe"
-$paperFixture = Join-Path $fixtureRoot "paper-faithful\triality-fixture.gguf"
-$paretoFixture = Join-Path $fixtureRoot "$paretoMode\triality-fixture.gguf"
+$qwenPaperFixture = Join-Path $qwenFixtureRoot "paper-faithful\triality-fixture.gguf"
+$qwenParetoFixture = Join-Path $qwenFixtureRoot "$paretoMode\triality-fixture.gguf"
+$gemmaPaperFixture = Join-Path $gemmaFixtureRoot "paper-faithful\triality-fixture.gguf"
+$gemmaParetoFixture = Join-Path $gemmaFixtureRoot "$paretoMode\triality-fixture.gguf"
+$gemmaPaperMmproj = Join-Path $gemmaFixtureRoot "paper-faithful\mmproj-triality-fixture.gguf"
+$gemmaParetoMmproj = Join-Path $gemmaFixtureRoot "$paretoMode\mmproj-triality-fixture.gguf"
 
-Write-Host "[triality] inspecting paper-faithful fixture"
-& $hypuraBin inspect $paperFixture
-Assert-LastExitCode "hypura inspect"
+Write-Host "[triality] inspecting qwen paper-faithful fixture"
+& $hypuraBin inspect $qwenPaperFixture
+Assert-LastExitCode "hypura inspect (qwen)"
 
-Write-Host "[triality] serve dry-run against paper-faithful fixture"
-& $hypuraBin serve $paperFixture --dry-run --port 18080
-Assert-LastExitCode "hypura serve --dry-run"
+Write-Host "[triality] inspecting gemma paper-faithful fixture"
+& $hypuraBin inspect $gemmaPaperFixture --mmproj $gemmaPaperMmproj
+Assert-LastExitCode "hypura inspect (gemma)"
 
-Write-Host "[triality] benchmark dry-run against paper-faithful fixture"
-& $hypuraBin bench $paperFixture --dry-run --context 512 --max-tokens 16
-Assert-LastExitCode "hypura bench --dry-run"
+Write-Host "[triality] inspecting qwen $paretoMode fixture"
+& $hypuraBin inspect $qwenParetoFixture
+Assert-LastExitCode "hypura inspect (qwen pareto)"
+
+Write-Host "[triality] inspecting gemma $paretoMode fixture"
+& $hypuraBin inspect $gemmaParetoFixture --mmproj $gemmaParetoMmproj
+Assert-LastExitCode "hypura inspect (gemma pareto)"
+
+Write-Host "[triality] serve dry-run against qwen paper-faithful fixture"
+& $hypuraBin serve $qwenPaperFixture --dry-run --port 18080
+Assert-LastExitCode "hypura serve --dry-run (qwen)"
+
+Write-Host "[triality] serve dry-run against gemma paper-faithful fixture"
+& $hypuraBin serve $gemmaPaperFixture --mmproj $gemmaPaperMmproj --dry-run --port 18081
+Assert-LastExitCode "hypura serve --dry-run (gemma)"
+
+Write-Host "[triality] serve dry-run against qwen $paretoMode fixture"
+& $hypuraBin serve $qwenParetoFixture --dry-run --port 18082
+Assert-LastExitCode "hypura serve --dry-run (qwen pareto)"
+
+Write-Host "[triality] serve dry-run against gemma $paretoMode fixture"
+& $hypuraBin serve $gemmaParetoFixture --mmproj $gemmaParetoMmproj --dry-run --port 18083
+Assert-LastExitCode "hypura serve --dry-run (gemma pareto)"
+
+Write-Host "[triality] benchmark dry-run against qwen paper-faithful fixture"
+& $hypuraBin bench $qwenPaperFixture --dry-run --context 512 --max-tokens 16
+Assert-LastExitCode "hypura bench --dry-run (qwen)"
 
 Write-Host "[triality] stack verification complete"
