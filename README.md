@@ -103,6 +103,21 @@ model families. For SuperGemma4-E4B, the CUDA lane now verifies a formal paired
 `text GGUF + mmproj GGUF` artifact contract, with Ollama-compatible image
 requests and OpenAI-compatible image+audio requests.
 
+## Local Patched Runtime
+
+If you want to run the patched Gemma 4 server produced during this integration
+work on this PC, use:
+
+```cmd
+run-gemma4-patched-llama-server.cmd
+```
+
+That launcher points at the validated local runtime build under
+`F:\triality-targets\llama-gemma-mtmd\bin\Release\llama-server.exe` and starts
+the paired Gemma 4 text GGUF + mmproj GGUF server on `127.0.0.1:8094` with
+`--no-warmup`. Additional notes live in
+`_docs/2026-04-19_use-patched-llama-cpp-on-this-pc_Codex.md`.
+
 ## CUDA Snapshot
 
 Latest full Windows CUDA evidence:
