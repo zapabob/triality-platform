@@ -101,7 +101,7 @@ The Windows CUDA lane currently:
 | Repo | Current upstream pin | Role in the stack | Current focus |
 | --- | --- | --- | --- |
 | `Turboquant-CUDA` | `main@6b13443` | Research, eval, export, fixtures | Triality packaging, evaluation lanes, and fixture generation |
-| `llama.cpp` | `master@0c0d6ae` | Inference core | Embedded GGUF runtime loading and backend execution |
+| `llama.cpp` | `master@9276d42` | Inference core | Embedded GGUF runtime loading and backend execution |
 | `Hypura` | `main@e3fb2fa` | Operational runtime | Inspect, serve, bench, and scheduler-facing runtime integration |
 
 The parent repo keeps these pins synchronized in `stack/stack.lock.json` and
@@ -139,7 +139,7 @@ The production contract is GGUF-embedded Triality and TurboQuant metadata.
 ## Current Parent Lock
 
 - `repos/Turboquant-CUDA`: `main@6b13443fb4bae6d5a279ea683dfe5b1de33b414d`
-- `repos/llama.cpp`: `master@0c0d6ae69329ff5000ac0896ea193cbd45940c7a`
+- `repos/llama.cpp`: `master@9276d42f45b152acfeead86d624cb43e062b5a5a`
 - `repos/hypura`: `main@e3fb2fa1f533e47d15d895333a8378b2314524eb`
 
 This repository is the source of truth for how those three upstreams are wired

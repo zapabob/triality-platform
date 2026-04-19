@@ -1,6 +1,6 @@
 {
   "stack_version": "0.1.0-dev",
-  "generated_at": "2026-04-18",
+  "generated_at": "2026-04-19",
   "preferred_validation": {
     "os": "Windows 11",
     "gpu": "RTX 3060",
@@ -20,7 +20,7 @@
     "llama.cpp": {
       "remote": "https://github.com/zapabob/llama.cpp.git",
       "branch": "master",
-      "commit": "0c0d6ae69329ff5000ac0896ea193cbd45940c7a"
+      "commit": "9276d42f45b152acfeead86d624cb43e062b5a5a"
     }
   }
 }
