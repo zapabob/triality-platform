@@ -307,7 +307,7 @@ Assert-LogContains -LogPath (Join-Path $logDir "hypura-inspect.log") -Pattern "S
 Assert-LogContains -LogPath (Join-Path $logDir "hypura-inspect.log") -Pattern "Public mode:" -Description "Hypura Triality public mode"
 
 Invoke-LoggedNative -Name "running Hypura CUDA smoke" -LogPath (Join-Path $logDir "hypura-run.log") -Script {
-  & $hypuraBin run $ModelPath --context $smokeContext --prompt $Prompt --max-tokens $MaxTokens
+  & $hypuraBin run $ModelPath --context $smokeContext --prompt $Prompt --max-tokens $MaxTokens --tq-allow-exact-fallback
 }
 
 Assert-LogContains -LogPath (Join-Path $logDir "hypura-run.log") -Pattern "TurboQuant:\s+mode=" -Description "Hypura TurboQuant runtime summary"

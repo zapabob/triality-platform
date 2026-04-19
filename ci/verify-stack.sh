@@ -65,14 +65,25 @@ cargo build --manifest-path "$repo_root/repos/hypura/Cargo.toml" --bin hypura
 hypura_bin="$repo_root/repos/hypura/target/debug/hypura"
 paper_fixture="$fixture_root/paper-faithful/triality-fixture.gguf"
 pareto_fixture="$fixture_root/$pareto_mode/triality-fixture.gguf"
+serve_fail_closed_log="$fixture_root/hypura-serve-fail-closed.log"
 
 echo "[triality] inspecting paper-faithful fixture"
 "$hypura_bin" inspect "$paper_fixture"
 
-echo "[triality] serve dry-run against paper-faithful fixture"
-"$hypura_bin" serve "$paper_fixture" --dry-run --port 18080
+echo "[triality] verifying Hypura fail-closed guard against contract-only weight runtime"
+if "$hypura_bin" serve "$paper_fixture" --dry-run --port 18080 >"$serve_fail_closed_log" 2>&1; then
+  echo "hypura serve --dry-run unexpectedly succeeded without --tq-allow-exact-fallback" >&2
+  exit 1
+fi
+if ! grep -q -- '--tq-allow-exact-fallback' "$serve_fail_closed_log"; then
+  echo "hypura serve --dry-run fail-closed log did not mention --tq-allow-exact-fallback" >&2
+  exit 1
+fi
 
-echo "[triality] benchmark dry-run against paper-faithful fixture"
-"$hypura_bin" bench "$paper_fixture" --dry-run --context 512 --max-tokens 16
+echo "[triality] serve dry-run against paper-faithful fixture with developer fallback"
+"$hypura_bin" serve "$paper_fixture" --dry-run --port 18080 --tq-allow-exact-fallback
+
+echo "[triality] benchmark dry-run against paper-faithful fixture with developer fallback"
+"$hypura_bin" bench "$paper_fixture" --dry-run --context 512 --max-tokens 16 --tq-allow-exact-fallback
 
 echo "[triality] stack verification complete"

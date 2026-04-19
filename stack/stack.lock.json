@@ -1,6 +1,6 @@
 {
   "stack_version": "0.1.0-dev",
-  "generated_at": "2026-04-19",
+  "generated_at": "2026-04-20",
   "preferred_validation": {
     "os": "Windows 11",
     "gpu": "RTX 3060",
@@ -10,17 +10,17 @@
     "hypura": {
       "remote": "https://github.com/zapabob/hypura.git",
       "branch": "main",
-      "commit": "e3fb2fa1f533e47d15d895333a8378b2314524eb"
+      "commit": "e5d1191a2c094d6accb33ddc6149687327be16f6"
     },
     "Turboquant-CUDA": {
       "remote": "https://github.com/zapabob/Turboquant-CUDA.git",
       "branch": "main",
-      "commit": "6b13443fb4bae6d5a279ea683dfe5b1de33b414d"
+      "commit": "f3a44c378c00d19eb7429b26a4fdb0a7e11a71e9"
     },
     "llama.cpp": {
       "remote": "https://github.com/zapabob/llama.cpp.git",
       "branch": "master",
-      "commit": "9276d42f45b152acfeead86d624cb43e062b5a5a"
+      "commit": "1da7f961034f55bef96676f2cd14a9641bfe7dbf"
     }
   }
 }

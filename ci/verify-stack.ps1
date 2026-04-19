@@ -1,5 +1,8 @@
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
+  $global:PSNativeCommandUseErrorActionPreference = $false
+}
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $fixtureRoot = Join-Path $env:TEMP "triality-platform-fixtures"
@@ -90,17 +93,33 @@ cmd /c "cargo build --manifest-path ""$(Join-Path $repoRoot "repos\hypura\Cargo.
 $hypuraBin = Join-Path $repoRoot "repos\hypura\target\debug\hypura.exe"
 $paperFixture = Join-Path $fixtureRoot "paper-faithful\triality-fixture.gguf"
 $paretoFixture = Join-Path $fixtureRoot "$paretoMode\triality-fixture.gguf"
+$serveFailClosedLog = Join-Path $fixtureRoot "hypura-serve-fail-closed.log"
 
 Write-Host "[triality] inspecting paper-faithful fixture"
 & $hypuraBin inspect $paperFixture
 Assert-LastExitCode "hypura inspect"
 
-Write-Host "[triality] serve dry-run against paper-faithful fixture"
-& $hypuraBin serve $paperFixture --dry-run --port 18080
+Write-Host "[triality] verifying Hypura fail-closed guard against contract-only weight runtime"
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+try {
+  & $hypuraBin serve $paperFixture --dry-run --port 18080 *> $serveFailClosedLog
+} finally {
+  $ErrorActionPreference = $previousErrorActionPreference
+}
+if ($LASTEXITCODE -eq 0) {
+  throw "hypura serve --dry-run unexpectedly succeeded without --tq-allow-exact-fallback"
+}
+if (-not (Select-String -Path $serveFailClosedLog -Pattern "allow-exact-fallback" -Quiet)) {
+  throw "hypura serve --dry-run fail-closed log did not mention allow-exact-fallback"
+}
+
+Write-Host "[triality] serve dry-run against paper-faithful fixture with developer fallback"
+& $hypuraBin serve $paperFixture --dry-run --port 18080 --tq-allow-exact-fallback
 Assert-LastExitCode "hypura serve --dry-run"
 
-Write-Host "[triality] benchmark dry-run against paper-faithful fixture"
-& $hypuraBin bench $paperFixture --dry-run --context 512 --max-tokens 16
+Write-Host "[triality] benchmark dry-run against paper-faithful fixture with developer fallback"
+& $hypuraBin bench $paperFixture --dry-run --context 512 --max-tokens 16 --tq-allow-exact-fallback
 Assert-LastExitCode "hypura bench --dry-run"
 
 Write-Host "[triality] stack verification complete"

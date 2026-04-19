@@ -1,146 +1,165 @@
 # Triality Platform
 
-**Turn Triality and TurboQuant research into a reproducible GGUF runtime.**
+**Turn TurboQuant and Triality research into a runnable, verifiable GGUF stack.**
 
-Triality Platform is a Windows-first integration stack for people who want more
-than "the exporter ran" or "the model loaded once." It keeps research, GGUF
-packaging, runtime loading, and operational verification tied to one contract
-and one release story.
+Triality Platform is the parent integration repo for three moving parts that
+usually drift apart:
 
-It brings together:
+- `Turboquant-CUDA` for offline research, fixture export, and GGUF payload staging
+- `llama.cpp` for reading and executing the embedded contract
+- `Hypura` for inspect, serve, bench, and operator-facing runtime checks
 
-- `Turboquant-CUDA` for capture, evaluation, export, and fixture generation
-- `llama.cpp` for embedded GGUF contract loading and inference-core execution
-- `Hypura` for inspection, serving, dry-run validation, and operational smoke
-- a parent repo that verifies the stack as a single system
+This repo exists so "it exported" is not the finish line. A Triality or
+TurboQuant artifact is only treated as real when the same GGUF-embedded
+contract survives export, loader checks, and runtime smoke.
 
-## Why It Matters
+## Why People Star It
 
-- One embedded contract across three repos
-- GGUF metadata is the production source of truth
-- Fast verification from the parent repo
-- A practical target machine class: Windows 11 plus RTX 3060
-- Clear separation between shipped behavior and ongoing research
+- One production contract: GGUF-embedded `hypura.turboquant.*`
+- One stack story: export, read, inspect, serve, and bench are wired together
+- One honest scope: weight-side `tq4_1s` contract support is real, while
+  unfinished runtime claims stay clearly marked as unfinished
+- One practical target machine class: Windows 11 plus RTX 3060
+- One parent repo that keeps fast verification in front of architecture drift
 
-## What Works Today
+## What Is Fresh Right Now
 
-- Fixture export from `Turboquant-CUDA`
-- GGUF-embedded `hypura.turboquant.*` metadata
-- Runtime metadata checks in `llama.cpp`
-- `Hypura inspect`, `serve --dry-run`, and `bench --dry-run`
-- Windows fast verify and CUDA smoke entrypoints
-- Versioned upstream pins in `stack/stack.lock.json`
+Upstream state was checked on **April 20, 2026 (JST)**.
+
+- `Turboquant-CUDA main@f3a44c3` lands the current `tq4_1s` GGUF conversion and
+  CUDA runtime staging line, plus Qwen and Gemma fixture export work.
+- `Hypura main@e5d1191` syncs the newer `tq4_1s` runtime support line into the
+  operator-facing runtime surface.
+- `llama.cpp master@1da7f96` is the current verified parent lock and carries
+  the fork's latest `tq4_1s` runtime-reference work on the branch this stack
+  actually tracks.
+- `llama.cpp main@6d70103` is ahead upstream, but this parent repo does **not**
+  switch to it yet; that move still needs a coordinated three-repo migration.
+
+## Why This Repo Exists
+
+Most TurboQuant demos stop too early. They prove a metric, publish a chart, or
+show an exported file. Triality Platform is the layer that asks a harder
+question:
+
+> Does the same embedded contract survive all the way from research export to
+> runtime wiring?
+
+That means this repo optimizes for:
+
+- reproducibility over hype
+- lock-step upstream pins over hand-waved "latest"
+- fast failure when the contract drifts
+- release evidence instead of repo-local folklore
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A["Turboquant-CUDA<br/>offline research, fixture export, GGUF staging"] --> B["GGUF embedded contract<br/>hypura.turboquant.*"]
+    B --> C["llama.cpp<br/>loader checks and inference-core execution"]
+    B --> D["Hypura<br/>inspect, serve, bench, operator runtime"]
+    C --> E["Triality Platform<br/>stack verify and release evidence"]
+    D --> E
+```
+
+## Verification Order
+
+The parent repo follows one verification order and keeps it visible:
+
+1. Submodule revision alignment
+2. Fixture export from `Turboquant-CUDA`
+3. Metadata and payload read checks in `llama.cpp`
+4. `Hypura inspect` profile verification
+5. `Hypura serve --dry-run` wiring verification
+6. `Hypura bench` smoke verification
+
+This is the core promise of the repository.
 
 ## Quick Start
 
-Clone the repo and initialize submodules:
+Clone with submodules:
 
 ```bash
 git clone --recursive https://github.com/zapabob/triality-platform.git
 cd triality-platform
 ```
 
-Run the fast verification lane:
+Run the fast stack verification lane:
 
 ```powershell
 pwsh -File .\ci\verify-stack.ps1
 ```
 
-```bash
-./ci/verify-stack.sh
-```
-
-Run the Windows CUDA smoke lane against a local GGUF:
+Optional Windows CUDA smoke against a local GGUF:
 
 ```powershell
 pwsh -File .\ci\verify-stack-cuda.ps1 -ModelPath C:\path\to\model.gguf
 ```
 
-The fast lane is the self-contained verification story. The current CUDA lane
-is a real-machine smoke path and still expects a local model path.
+The fast lane is the main release gate. The CUDA lane is the hardware-backed
+smoke path.
 
-## End-To-End Flow
+## Current Verified Parent Lock
 
-```mermaid
-flowchart LR
-    A["Turboquant-CUDA<br/>capture, eval, export"] --> B["GGUF embedded contract<br/>hypura.turboquant.* metadata"]
-    B --> C["llama.cpp<br/>runtime load and inference-core execution"]
-    B --> D["Hypura<br/>inspect, serve, bench, operational smoke"]
-    C --> E["Parent repo verification<br/>fast verify and CUDA smoke"]
-    D --> E
-    E --> F["Versioned release evidence<br/>stack.lock.json and logs"]
-```
-
-## Verification Story
-
-The parent repo exists to answer one question:
-
-> Does the same embedded contract survive export, validation, runtime load, and
-> operational smoke?
-
-The fast Windows lane currently checks:
-
-1. submodule revision alignment
-2. pinned revisions in `stack/stack.lock.json`
-3. `Turboquant-CUDA` environment bootstrap
-4. fixture export for `paper-faithful` and `triality-proxy-so8-pareto`
-5. exported manifest validation
-6. `Hypura inspect`
-7. `Hypura serve --dry-run`
-8. `Hypura bench --dry-run`
-
-The Windows CUDA lane currently:
-
-- bootstraps the `Turboquant-CUDA` `uv` environment with `cu128`
-- builds `llama.cpp` and `Hypura` against CUDA
-- validates embedded Triality metadata on a selected GGUF
-- runs `Hypura` inspect and runtime smoke on real hardware
-
-## Integrated Stack
-
-| Repo | Current upstream pin | Role in the stack | Current focus |
+| Repo | Locked branch | Locked commit | Why it matters |
 | --- | --- | --- | --- |
-| `Turboquant-CUDA` | `main@6b13443` | Research, eval, export, fixtures | Triality packaging, evaluation lanes, and fixture generation |
-| `llama.cpp` | `master@9276d42` | Inference core | Embedded GGUF runtime loading and backend execution |
-| `Hypura` | `main@e3fb2fa` | Operational runtime | Inspect, serve, bench, and scheduler-facing runtime integration |
+| `Turboquant-CUDA` | `main` | `f3a44c378c00d19eb7429b26a4fdb0a7e11a71e9` | Exports the current Qwen and Gemma Triality fixtures and `weight.v1` metadata line |
+| `llama.cpp` | `master` | `1da7f961034f55bef96676f2cd14a9641bfe7dbf` | Reads and executes the current embedded contract on the branch this stack validates today |
+| `Hypura` | `main` | `e5d1191a2c094d6accb33ddc6149687327be16f6` | Supplies inspect, serve, and bench behavior on top of the same GGUF contract |
 
-The parent repo keeps these pins synchronized in `stack/stack.lock.json` and
-uses them as the reference release surface.
+The exact pins live in [`stack/stack.lock.json`](stack/stack.lock.json).
 
-## Public Contract
+## Branch Policy For `llama.cpp`
 
-The production contract is GGUF-embedded Triality and TurboQuant metadata.
+This parent repo intentionally tracks **`zapabob/llama.cpp` `master`**, not
+`main`, as the current operational anchor.
+
+Why:
+
+- `Turboquant-CUDA` and `Hypura` are still aligned to the `master`-based
+  runtime contract today
+- the fork's `main` branch is ahead in areas that should be migrated as one
+  batch, not piecemeal
+- the safe move is a coordinated three-repo migration, not a silent parent-pin
+  flip
+
+So the README stays current about upstream `main`, while the lock file stays
+honest about what the parent repo actually verifies.
+
+## What This Repo Guarantees
 
 - Public metadata stays under `hypura.turboquant.*`
+- GGUF-embedded metadata is treated as the production contract
 - Embedded metadata is preferred over runtime environment overrides
-- Sidecars can exist for research and reproducibility, but they are not the
-  runtime source of truth
-- `triality-proxy-so8-pareto` is the current public pareto label
+- Parent-level verification reflects the real pinned stack, not a wish list
 
-## Reality Check
+## Who This Is For
 
-- This repo is about contract integrity and stack execution, not benchmark
-  marketing
-- The current CUDA lane is a smoke verification path, not a performance
-  leaderboard
-- Do not treat the existing verification lanes as proof that every future
-  native weight TurboQuant kernel is already complete end to end
+- Researchers who want their export contract to survive runtime reality
+- Runtime engineers who need a stable integration surface across three repos
+- Windows local-AI builders who care about reproducibility more than one-off demos
+- People evaluating Triality and TurboQuant ideas without pretending unfinished
+  kernels are already done
 
 ## Repository Layout
 
-- `repos/Turboquant-CUDA`: research, capture, evaluation, export, fixtures
-- `repos/llama.cpp`: inference core, GGUF runtime, backend execution
-- `repos/hypura`: operations runtime, inspect, serve, bench, scheduler
-- `stack/`: lock file and stack contract metadata
-- `docs/`: integration and release-facing documentation
-- `ci/`: stack-level verification entrypoints
-- `_docs/`: implementation logs and machine-local engineering notes
+- `repos/Turboquant-CUDA`: research, eval, export, Triality fixtures
+- `repos/llama.cpp`: GGUF contract loading and inference-core behavior
+- `repos/hypura`: inspect, serve, bench, and runtime operations
+- `stack/`: lock file and stack metadata
+- `ci/`: fast verify and CUDA smoke entrypoints
+- `docs/`: stack-facing documentation
+- `_docs/`: implementation logs
 
-## Current Parent Lock
+## Reality Check
 
-- `repos/Turboquant-CUDA`: `main@6b13443fb4bae6d5a279ea683dfe5b1de33b414d`
-- `repos/llama.cpp`: `master@9276d42f45b152acfeead86d624cb43e062b5a5a`
-- `repos/hypura`: `main@e3fb2fa1f533e47d15d895333a8378b2314524eb`
+- This repo is a systems-integration project, not a benchmark marketing page
+- A stronger metadata contract does not automatically mean finished native
+  weight-side CUDA kernels
+- If upstreams diverge, the parent repo should fail loudly rather than quietly
+  blur verified and unverified behavior
 
-This repository is the source of truth for how those three upstreams are wired
-together right now.
+## License
+
+Apache-2.0
