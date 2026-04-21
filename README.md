@@ -24,16 +24,16 @@ contract survives export, loader checks, and runtime smoke.
 
 ## What Is Fresh Right Now
 
-Upstream state was checked on **April 20, 2026 (JST)**.
+Upstream state was checked on **April 22, 2026 (JST)**.
 
-- `Turboquant-CUDA main@f3a44c3` lands the current `tq4_1s` GGUF conversion and
-  CUDA runtime staging line, plus Qwen and Gemma fixture export work.
-- `Hypura main@e5d1191` syncs the newer `tq4_1s` runtime support line into the
-  operator-facing runtime surface.
-- `llama.cpp master@1da7f96` is the current verified parent lock and carries
-  the fork's latest `tq4_1s` runtime-reference work on the branch this stack
-  actually tracks.
-- `llama.cpp main@6d70103` is ahead upstream, but this parent repo does **not**
+- `Turboquant-CUDA main@59d5acf` hardens the shared Triality ABI and closes out
+  the current `TQ4_1S` CUDA line.
+- `Hypura main@94bb855` moves to the newer `v0.11.0` runtime surface and syncs
+  the latest vendored `zapabob/llama.cpp` line into operator-facing docs and runtime behavior.
+- `llama.cpp master@f62f191` is the current verified parent lock and carries
+  the fork's newer `tq4_1s` runtime-reference merge on the branch this stack
+  still tracks operationally.
+- `llama.cpp main@00459dd` is ahead upstream, but this parent repo does **not**
   switch to it yet; that move still needs a coordinated three-repo migration.
 
 ## Why This Repo Exists
@@ -104,9 +104,9 @@ smoke path.
 
 | Repo | Locked branch | Locked commit | Why it matters |
 | --- | --- | --- | --- |
-| `Turboquant-CUDA` | `main` | `f3a44c378c00d19eb7429b26a4fdb0a7e11a71e9` | Exports the current Qwen and Gemma Triality fixtures and `weight.v1` metadata line |
-| `llama.cpp` | `master` | `1da7f961034f55bef96676f2cd14a9641bfe7dbf` | Reads and executes the current embedded contract on the branch this stack validates today |
-| `Hypura` | `main` | `e5d1191a2c094d6accb33ddc6149687327be16f6` | Supplies inspect, serve, and bench behavior on top of the same GGUF contract |
+| `Turboquant-CUDA` | `main` | `59d5acf039b89582d68feab8c736039f9ea5289a` | Exports the hardened Triality ABI plus the current `TQ4_1S` fixture and CUDA line |
+| `llama.cpp` | `master` | `f62f191123772652a7d45ff8d37628a9e55ee7c3` | Reads and executes the current embedded contract on the branch this stack validates today |
+| `Hypura` | `main` | `94bb8556dda78be04f29b51b0b79c5adfb8b75dd` | Supplies the newer `v0.11.0` inspect, serve, and bench behavior on top of the same GGUF contract |
 
 The exact pins live in [`stack/stack.lock.json`](stack/stack.lock.json).
 
